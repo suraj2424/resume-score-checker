@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Placeholder-domain guard (src/config/site.ts) fails production builds
+      # on example.com URLs. CI is not a production deploy, so use
+      # non-example dummy values to let typecheck/lint/test/build run.
+      NEXT_PUBLIC_SITE_URL: https://ci.local
+      NEXT_PUBLIC_CONTACT_EMAIL: ci@ci.local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
