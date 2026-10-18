@@ -49,6 +49,17 @@ export const siteConfig = {
   locale: "en_US",
   /** Contact email shown on the contact page. Overridden by NEXT_PUBLIC_CONTACT_EMAIL. */
   contactEmail: resolveContactEmail(),
+  /**
+   * Date the privacy policy and terms were last substantively changed, as
+   * `YYYY-MM-DD`. One source for both pages, because two files each carrying
+   * their own copy of the same string is how they drift apart.
+   *
+   * Deliberately a fixed string rather than a build timestamp or git lookup:
+   * `new Date()` would claim the policy changed on every deploy, and a bare
+   * month/year gives a reader no way to tell a typo fix from a real edit.
+   * Bump it by hand when the wording actually changes.
+   */
+  legalLastUpdated: "2026-10-16",
   links: {
     howItWorks: "/#how-it-works",
     whatWeCheck: "/#what-we-check",

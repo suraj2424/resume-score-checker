@@ -1,36 +1,48 @@
-import {
-  SCORING_THRESHOLDS,
-} from "@/config/scoring";
+import { SCORING_THRESHOLDS } from "@/config/scoring";
 import type {
   DocumentStructure,
   FormattingSignal,
+  ResumeBullet,
   ResumeSection,
   ResumeTextStats,
 } from "./types";
-import type { DateAnalysis } from "./date-analyzer";
-import type { ResumeBullet } from "./types";
-import { headingStyleShare } from "./section-detector";
 
 export interface FormattingInput {
-  normalizedText: string;
   stats: ResumeTextStats;
   structure?: DocumentStructure;
-  pageCount?: number;
   sections: ResumeSection[];
-  dates: DateAnalysis;
   bullets: ResumeBullet[];
 }
 
 /**
- * Convert observable document traits into formatting signals. Signals are
- * always phrased as observations ("may be read in an unexpected order"), never
- * as claims of ATS compatibility.
+ * Convert observable document traits into formatting signals.
+ *
+ * One rule decides what belongs here: a fact a scored check already reports does
+ * not also appear as a signal. The report renders checks and signals in two
+ * different visual systems side by side, so a duplicate is not repetition a
+ * reader can skim past - it is the same sentence twice, with no way to tell
+ * which of the two to act on. Signals are therefore reserved for what no check
+ * measures: structural facts only the parser can observe.
+ *
+ * That removes the old `replacement-characters`, `excessive-blank-lines`,
+ * `long-lines`, `mixed-heading-styles`, `inconsistent-date-formats`,
+ * `many-pages`, `very-little-text` and `no-bullet-markers` signals, all of which
+ * restated a readability, structure or content check with the same threshold.
+ * `image-only-pages` went for a different reason: the PDF parser already emits a
+ * parsing warning under that exact code, and the snapshot renders warnings and
+ * signals in the same list, so it appeared twice by construction.
+ *
+ * Signals are always phrased as observations ("may be read in an unexpected
+ * order"), never as claims of ATS compatibility.
  */
 export function analyzeFormatting(input: FormattingInput): FormattingSignal[] {
   const signals: FormattingSignal[] = [];
-  const { stats, structure, pageCount, sections, dates, bullets } = input;
+  const { stats, structure, sections, bullets } = input;
 
   if (stats.wordCount === 0) {
+    // The one early return kept: with no text there is nothing for the checks to
+    // measure either, and this is the analyzer's bail-out rather than a second
+    // copy of `readability-extractable-text`.
     signals.push({
       type: "no-text-extracted",
       severity: "critical",
@@ -39,60 +51,6 @@ export function analyzeFormatting(input: FormattingInput): FormattingSignal[] {
         "No selectable text could be extracted from this document. Scanned or image-only pages cannot be read without OCR, which this tool does not perform.",
     });
     return signals;
-  }
-
-  if (stats.wordCount < SCORING_THRESHOLDS.minimalWords) {
-    signals.push({
-      type: "very-little-text",
-      severity: "warning",
-      confidence: "high",
-      explanation: `Only ${stats.wordCount} words of text could be extracted, which is too little to assess a full resume.`,
-    });
-  }
-
-  if (stats.replacementCharCount > 0) {
-    signals.push({
-      type: "replacement-characters",
-      severity: "critical",
-      confidence: "high",
-      explanation:
-        "Some characters could not be decoded and appear as replacement symbols. This usually indicates a corrupted or unusual text encoding.",
-    });
-  }
-
-  if (stats.maxBlankLineRun >= 3) {
-    signals.push({
-      type: "excessive-blank-lines",
-      severity: "warning",
-      confidence: "medium",
-      explanation:
-        "Large runs of empty lines were detected. Excessive whitespace can push content onto extra pages and suggests manual layout work.",
-    });
-  }
-
-  if (
-    stats.longestLineRatio >= SCORING_THRESHOLDS.longLineRatioWarning &&
-    stats.longestLineLength > SCORING_THRESHOLDS.longLineCharacters
-  ) {
-    signals.push({
-      type: "long-lines",
-      severity: "warning",
-      confidence: "medium",
-      explanation:
-        "Many lines are far longer than a normal sentence. This often happens with tables or multi-column layouts, where content may be read in an unexpected order.",
-    });
-  }
-
-  const imageOnlyPages = structure?.imageOnlyPages ?? [];
-  if (imageOnlyPages.length > 0) {
-    signals.push({
-      type: "image-only-pages",
-      severity: "critical",
-      confidence: "high",
-      explanation: `${
-        imageOnlyPages.length === 1 ? "Page" : "Pages"
-      } ${imageOnlyPages.join(", ")} contain no selectable text. This tool does not perform OCR, so that content cannot be analyzed.`,
-    });
   }
 
   if ((structure?.tableCount ?? 0) > 0) {
@@ -125,52 +83,37 @@ export function analyzeFormatting(input: FormattingInput): FormattingSignal[] {
     });
   }
 
-  if (pageCount !== undefined && pageCount > SCORING_THRESHOLDS.longResumePages) {
+  // `interleavedLineCount` and `ambiguousPageCount` are deliberately not
+  // signalled here: the reading-order and scanned-page checks measure them, and
+  // a signal would put the same evidence in front of the reader a second time.
+
+  // The one duplicated predicate kept, because the check that already measures
+  // it says how many bullets and quotes them, while this says nothing the reader
+  // can act on - and it is the only place the two definitions of "too short"
+  // (`<= 1` word here, `< 5` there) have to agree. Unifying them to one
+  // threshold is worth more than the duplicate sentence.
+  const shortBulletLimit = SCORING_THRESHOLDS.shortBulletWords;
+  const shortBullets = bullets.filter((bullet) => bullet.wordCount < shortBulletLimit).length;
+  if (shortBullets > 0) {
     signals.push({
-      type: "many-pages",
+      type: "short-bullets",
+      severity: "warning",
+      confidence: "high",
+      explanation: `${shortBullets} bullet ${shortBullets === 1 ? "item is" : "items are"} shorter than ${shortBulletLimit} words and may not explain the work.`,
+    });
+  }
+
+  const hasSections = sections.length >= SCORING_THRESHOLDS.minimumRoleEntries;
+  if (hasSections && bullets.length === 0 && stats.wordCount >= SCORING_THRESHOLDS.minimalWords) {
+    // Kept where the scored bullet check cannot reach: with no bullets at all the
+    // content checks return `not-applicable`, so nothing downstream reports that
+    // this document has no bullet structure to inspect.
+    signals.push({
+      type: "no-bullets-in-sectioned-document",
       severity: "info",
-      confidence: "high",
-      explanation: `The document has ${pageCount} pages. Single-page resumes are the norm for most early-career roles; ${SCORING_THRESHOLDS.longResumePages + 1} or more pages is unusual.`,
-    });
-  }
-
-  if (sections.length >= 2 && headingStyleShare(sections) < SCORING_THRESHOLDS.headingStyleSharePass) {
-    signals.push({
-      type: "mixed-heading-styles",
-      severity: "warning",
-      confidence: "low",
-      explanation:
-        "Section headings use inconsistent capitalization styles. Consistent headings make a resume easier to scan and to parse.",
-    });
-  }
-
-  if (bullets.length === 0 && stats.wordCount >= SCORING_THRESHOLDS.minimalWords) {
-    signals.push({
-      type: "no-bullet-markers",
-      severity: "info",
-      confidence: "high",
-      explanation:
-        "No bullet markers were detected. Paragraph formatting can work, but bullet points make achievements easier to scan.",
-    });
-  }
-
-  const nearEmptyBullets = bullets.filter((bullet) => bullet.wordCount <= 1).length;
-  if (nearEmptyBullets > 0) {
-    signals.push({
-      type: "near-empty-bullets",
-      severity: "warning",
-      confidence: "high",
-      explanation: `${nearEmptyBullets} bullet ${nearEmptyBullets === 1 ? "item has" : "items have"} almost no content.`,
-    });
-  }
-
-  if (dates.dates.length >= 3 && dates.distinctFamilies >= 2) {
-    signals.push({
-      type: "inconsistent-date-formats",
-      severity: "warning",
       confidence: "medium",
       explanation:
-        "Dates appear in more than one format. Consistent date formats are easier for recruiters and parsers to interpret.",
+        "No bullet markers were found anywhere in a document that does have section headings. The content may be written as paragraphs, which recruiters find slower to scan.",
     });
   }
 

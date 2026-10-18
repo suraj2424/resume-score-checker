@@ -3,7 +3,9 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader, ProseBullet } from "@/components/layout/page-header";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Alert } from "@/components/ui/alert";
+import { MAX_UPLOAD_BYTES } from "@/config/scoring";
 import { siteConfig } from "@/config/site";
+import { formatFileSize } from "@/lib/utils/format";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — How Your Resume Is Handled",
@@ -44,6 +46,17 @@ export default function PrivacyPage() {
             extraction for PDF and DOCX, section detection, scoring and report rendering all run
             locally using open-source libraries. The file and the extracted text are never sent over
             the network.
+          </p>
+          <p className="max-w-[66ch] text-[15px] leading-relaxed text-ink-2">
+            The extracted text does sit in your tab&rsquo;s memory while the report is open, because
+            that is what lets the check run without a server. Keeping your contact details out of the
+            report does not depend on stripping them out first. Contact detection reports only
+            whether an email address, a phone number or a profile link was found, and how many of
+            them — never the values themselves — so no rule needs the value to decide anything.
+            Any text the report does display is passed through a redaction step at the moment it is
+            rendered, so an address, number or link that happens to sit inside a quoted bullet is
+            replaced with a label before it reaches the page. The original values are never shown or
+            exported.
           </p>
         </section>
 
@@ -97,9 +110,9 @@ export default function PrivacyPage() {
           <SectionHeading title="Security handling" />
           <p className="max-w-[66ch] text-[15px] leading-relaxed text-ink-2">
             Uploaded files are treated as untrusted input. We validate the file type by extension and
-            by file signature, enforce a 5 MB size limit, never execute document content, and never
-            render extracted text as HTML. Parsing failures are handled as recoverable states rather
-            than crashes.
+            by file signature, enforce a size limit of {formatFileSize(MAX_UPLOAD_BYTES)}, never
+            execute document content, and never render extracted text as HTML. Parsing failures are
+            handled as recoverable states rather than crashes.
           </p>
         </section>
 

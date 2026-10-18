@@ -34,7 +34,7 @@ const FOOTER_SECTIONS = [
 export function SiteFooter() {
   return (
     <footer className="no-print border-t border-edge">
-      <PageContainer size="wide" className="py-12 sm:py-14">
+      <PageContainer size="wide" className="py-14 lg:py-20">
         <div className="grid gap-10 md:grid-cols-[1.5fr_repeat(3,1fr)]">
           <div className="flex flex-col gap-3">
             <Brand />
@@ -66,7 +66,7 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col gap-2 border-t border-rule pt-5 text-[12px] leading-relaxed text-ink-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col gap-2 border-t border-rule pt-5 text-[13px] leading-relaxed text-ink-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="tabular">
             © {new Date().getFullYear()} {siteConfig.name}
           </p>

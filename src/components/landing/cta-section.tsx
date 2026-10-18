@@ -6,13 +6,14 @@ import { ALL_CHECKS } from "@/lib/resume/rules";
 
 export function CtaSection() {
   return (
-    <section className="border-t border-edge py-14 lg:py-16">
-      <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-16">
+    <section className="border-t border-edge py-14 lg:py-20">
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-14">
         <div className="flex flex-col gap-3">
-          <h2 className="max-w-[20ch] text-[1.75rem] leading-[1.08] tracking-[-0.028em] text-ink sm:text-[2.25rem]">
-            Know what a recruiter sees first.
-          </h2>
-          <p className="max-w-[52ch] text-[15px] leading-relaxed text-ink-2">
+          {/* The base `h2` rule in `globals.css` is authoritative now. This
+              override was the third h2 size on the site and the only one that
+              disagreed with `SectionHeading`; two heading sizes is the scale. */}
+          <h2 className="max-w-[20ch] text-ink">Know what a recruiter sees first.</h2>
+          <p className="max-w-[58ch] text-[15px] leading-relaxed text-ink-2">
             {ALL_CHECKS.length} checks, {SCORING_VERSION}, no sign-up. Open the report, fix the
             first red item, then decide whether you want the rest.
           </p>

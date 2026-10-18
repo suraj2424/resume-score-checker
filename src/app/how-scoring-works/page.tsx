@@ -9,16 +9,44 @@ import {
   SCORING_CATEGORIES,
   SCORING_THRESHOLDS,
   SCORING_VERSION,
+  TOTAL_SCORE_WEIGHT,
   WARNING_CREDIT,
 } from "@/config/scoring";
 import { ALL_CHECKS } from "@/lib/resume/rules";
 import { RELEVANCE_LIMIT_NOTE } from "@/lib/resume/rules/helpers";
 import { siteConfig } from "@/config/site";
 
+/**
+ * The category count, spelled out for prose.
+ *
+ * This page said "the five weighted categories" in two places, one of them in
+ * the metadata description — a number that was correct by coincidence and would
+ * have quietly become a lie the day a sixth category was configured. Indexing a
+ * word list by the live count means the sentence follows the config instead of
+ * a remembered digit.
+ */
+const NUMBER_WORDS = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+] as const;
+
+function categoryCountWord(): string {
+  return NUMBER_WORDS[SCORING_CATEGORIES.length] ?? String(SCORING_CATEGORIES.length);
+}
+
+const CATEGORY_COUNT_WORD = categoryCountWord();
+
 export const metadata: Metadata = {
   title: "How Scoring Works — Methodology, Categories and Limits",
-  description:
-    "How ResumeGauge calculates its 0-100 resume score: the five weighted categories, how each check earns points, what happens when a check cannot be verified, and the limits of the method.",
+  description: `How ResumeGauge calculates its 0-${TOTAL_SCORE_WEIGHT} resume score: the ${CATEGORY_COUNT_WORD} weighted categories, how each check earns points, what happens when a check cannot be verified, and the limits of the method.`,
   alternates: { canonical: "/how-scoring-works" },
 };
 
@@ -45,9 +73,10 @@ export default function HowScoringWorksPage() {
           title="How scoring works"
           standfirst={
             <>
-              {siteConfig.name} scores your resume out of 100 using {totalChecks} deterministic
-              checks in {SCORING_CATEGORIES.length} weighted categories. Every score traces back to
-              individual checks, and each check explains what it found and why it matters.
+              {siteConfig.name} scores your resume out of {TOTAL_SCORE_WEIGHT} using{" "}
+              {totalChecks} deterministic checks in {SCORING_CATEGORIES.length} weighted categories.
+              Every score traces back to individual checks, and each check explains what it found
+              and why it matters.
             </>
           }
           meta={`Scoring version ${SCORING_VERSION}`}
@@ -73,8 +102,9 @@ export default function HowScoringWorksPage() {
             </PolicyStep>
             <PolicyStep index={4}>
               <strong>The score is the share of the points you could be assessed on.</strong> If
-              only 92 of 100 points could be evaluated, the score is the earned points divided by
-              92, reported out of 100, with the coverage disclosed alongside it.
+              only 92 of {TOTAL_SCORE_WEIGHT} points could be evaluated, the score is the earned
+              points divided by 92, reported out of {TOTAL_SCORE_WEIGHT}, with the coverage disclosed
+              alongside it.
             </PolicyStep>
             <PolicyStep index={5}>
               <strong>Identical input always produces an identical score.</strong> There is no
@@ -85,9 +115,26 @@ export default function HowScoringWorksPage() {
         </section>
 
         <section className="flex flex-col gap-6">
-          <SectionHeading title="The five categories" />
-          <div className="overflow-x-auto">
+          <SectionHeading title={`The ${CATEGORY_COUNT_WORD} categories`} />
+          {/*
+            The table is wider than a phone column and scrolls sideways, but a
+            scrolling box is only keyboard-scrollable once it is focusable, so
+            `tabIndex`, `role` and a name all have to be here. Without them this
+            was the one table in the app and no keyboard user could reach any of
+            it. `role="region"` is what makes `aria-label` legal — a bare
+            `aria-label` on a `div` is discarded.
+          */}
+          <div
+            className="overflow-x-auto"
+            tabIndex={0}
+            role="region"
+            aria-label="Scoring category weights"
+          >
             <table className="w-full min-w-[34rem] border-collapse text-[14px]">
+              <caption className="sr-only">
+                Scoring weight and check count for each of the {CATEGORY_COUNT_WORD} categories, and
+                the total across all of them.
+              </caption>
               <thead>
                 <tr className="border-y border-rule-2 text-left">
                   <th scope="col" className="py-2.5 pr-4 font-semibold text-ink">
@@ -104,12 +151,12 @@ export default function HowScoringWorksPage() {
               <tbody>
                 {SCORING_CATEGORIES.map((category) => (
                   <tr key={category.id} className="border-b border-rule">
-                    <td className="py-3.5 pr-4 align-top">
+                    <th scope="row" className="py-3.5 pr-4 text-left align-top font-medium">
                       <span className="font-medium text-ink">{category.name}</span>
-                      <span className="mt-0.5 block text-[13px] leading-relaxed text-ink-3">
+                      <span className="mt-0.5 block text-[13px] font-normal leading-relaxed text-ink-3">
                         {category.description}
                       </span>
-                    </td>
+                    </th>
                     <td className="py-3.5 pr-4 align-top">
                       <span className="figure text-ink">{category.weight}</span>
                     </td>
@@ -121,11 +168,11 @@ export default function HowScoringWorksPage() {
                   </tr>
                 ))}
                 <tr>
-                  <td className="py-3.5 font-semibold text-ink">Total</td>
+                  <th scope="row" className="py-3.5 text-left font-semibold text-ink">
+                    Total
+                  </th>
                   <td className="py-3.5">
-                    <span className="figure text-ink">
-                      {SCORING_CATEGORIES.reduce((sum, category) => sum + category.weight, 0)}
-                    </span>
+                    <span className="figure text-ink">{TOTAL_SCORE_WEIGHT}</span>
                   </td>
                   <td className="py-3.5">
                     <span className="figure text-ink">{totalChecks}</span>

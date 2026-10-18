@@ -54,7 +54,7 @@ const FAQS = [
 export function FaqSection() {
   return (
     <section id="faq" className="scroll-mt-24 border-t border-edge py-14 lg:py-20">
-      <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+      <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
         <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
           <SectionHeading
             label="Questions"
@@ -73,7 +73,7 @@ export function FaqSection() {
         <div className="flex flex-col border-t border-rule">
           {FAQS.map((faq, index) => (
             <AccordionItem key={faq.question} title={faq.question} defaultOpen={index === 0}>
-              <p className="max-w-[62ch]">{faq.answer}</p>
+              <p className="max-w-[66ch]">{faq.answer}</p>
             </AccordionItem>
           ))}
         </div>

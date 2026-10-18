@@ -40,8 +40,15 @@ function wholeBulletMark(
   };
 }
 
+/**
+ * A mark pinned to the exact words that caused it.
+ *
+ * Takes no bullet: every caller already holds the span, and passing the bullet
+ * as well invited a future edit to reach back into it and re-derive offsets from
+ * a second source of truth. `wholeBulletMark` is the opposite case and keeps the
+ * bullet, because "the whole line" is the claim.
+ */
 function spanMark(
-  bullet: ResumeBullet,
   kind: BulletMark["kind"],
   checkId: string,
   label: string,
@@ -97,7 +104,6 @@ export function buildBulletMarks(bullet: ResumeBullet): BulletMark[] {
   for (const span of bullet.weakPhraseSpans) {
     marks.push(
       spanMark(
-        bullet,
         "weak-phrase",
         "content-weak-wording",
         "Filler",
@@ -111,7 +117,6 @@ export function buildBulletMarks(bullet: ResumeBullet): BulletMark[] {
   for (const span of bullet.firstPersonSpans) {
     marks.push(
       spanMark(
-        bullet,
         "first-person",
         "content-first-person",
         "First person",
@@ -126,7 +131,6 @@ export function buildBulletMarks(bullet: ResumeBullet): BulletMark[] {
   if (leading) {
     marks.push(
       spanMark(
-        bullet,
         "no-action-verb",
         "content-action-verbs",
         "No action verb",

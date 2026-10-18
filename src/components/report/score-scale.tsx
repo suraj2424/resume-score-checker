@@ -1,8 +1,8 @@
-import { cn } from "@/lib/utils/cn";
+﻿import { cn } from "@/lib/utils/cn";
 import type { ScoreBandId } from "@/config/scoring";
 import { SCORE_BANDS } from "@/config/scoring";
 import { bandTone } from "@/components/ui/tones";
-import { TONE_BAR, type Tone } from "@/components/ui/badge";
+import { TONE_DOT, type Tone } from "@/components/ui/badge";
 
 /**
  * The score is a measurement, so it is drawn like one: a printed scale with
@@ -21,8 +21,6 @@ const SIZE_MAP = {
   md: { bar: "h-3", figure: "text-5xl", tickLabel: "text-[11px]" },
   lg: { bar: "h-5", figure: "text-[4.5rem] sm:text-[6rem]", tickLabel: "text-[11px]" },
 } as const;
-
-export { bandTone };
 
 export function ScoreScale({
   value,
@@ -52,7 +50,7 @@ export function ScoreScale({
     >
       <div className={cn("relative w-full border-b border-rule-2", bar)}>
         <span
-          className={cn("animate-wipe absolute inset-y-0 left-0 motion-reduce:animate-none", TONE_BAR[tone])}
+          className={cn("animate-wipe absolute inset-y-0 left-0 motion-reduce:animate-none", TONE_DOT[tone])}
           style={{ width: `${clamped}%` }}
         />
 

@@ -38,7 +38,7 @@ export function AnalysisError({
 
   return (
     <div className="flex flex-col gap-4">
-      <Alert tone={noText ? "caution" : "issue"} surface="wash">
+      <Alert tone={noText ? "caution" : "issue"} surface="wash" role="alert">
         <AlertTitle>{title}</AlertTitle>
         <AlertDescription>
           <p>{error.message}</p>

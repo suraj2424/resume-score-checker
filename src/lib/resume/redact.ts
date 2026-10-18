@@ -13,15 +13,51 @@
  * look like a missing one.
  */
 
+import { isLikelyPhoneNumber } from "./contact-detector";
+
+/** Separators that can appear between two numbers and look like one run. */
+const PHONE_RUN_EDGE = " \t().-";
+const PHONE_RUN_CHARACTER = "0123456789 \t().-+";
+
+const YEAR_RANGE_SOURCE =
+  "\\b(?:19|20)\\d{2}\\s*(?:[-\u2013\u2014\u2212]|\\bto\\b)\\s*" +
+  "(?:(?:19|20)\\d{2}|present|current|now|today|ongoing)\\b";
+const YEAR_PAIR_SOURCE = "\\b(?:19|20)\\d{2}[\\s,]+(?:19|20)\\d{2}\\b";
+
+/**
+ * `\w` is ASCII-only, so `jаne@example.com` written with a Cyrillic `а` slipped
+ * through untouched. `\p{L}`/`\p{N}` cover the scripts an address is actually
+ * written in, and the lookbehind keeps the local part from starting mid-token.
+ */
+const EMAIL_SOURCE =
+  "(?<![\\p{L}\\p{N}._%+-])[\\p{L}\\p{N}._%+-]+@[\\p{L}\\p{N}-]+(?:\\.[\\p{L}\\p{N}-]+)+";
+
+const LINKEDIN_SOURCE = "linkedin\\.com/[\\w/-]+";
+const GITHUB_SOURCE = "github\\.com/[\\w/-]+";
+const URL_SOURCE = "(?:https?://|www\\.)\\S+";
+
+/** Formatted numbers: `617-555-0142`, `(555) 123 4567`, `+1 617 555 0142`. */
+const PHONE_FORMATTED_SOURCE =
+  "(?:\\+?\\d{1,3}[\\s.-]?)?(?:\\(\\d{2,4}\\)[\\s.-]?)?\\d{3,4}[\\s.-]\\d{3,4}(?:[\\s.-]\\d{2,4})?";
+/** A bare digit run the detector would accept: `5551234567`. */
+const PHONE_BARE_SOURCE = "(?<![\\d+])\\+?\\d{8,15}(?!\\d)";
+
 const PATTERN = new RegExp(
   [
-    "\\b[\\w.+-]+@[\\w-]+\\.[\\w.-]+\\b", // email
-    "\\blinkedin\\.com/[\\w/-]+", // linkedin
-    "\\bgithub\\.com/[\\w/-]+", // github
-    "\\b(?:https?://|www\\.)\\S+", // url
-    "(?:\\+?\\d{1,3}[\\s.-]?)?(?:\\(\\d{2,4}\\)[\\s.-]?)?\\d{3,4}[\\s.-]\\d{3,4}(?:[\\s.-]\\d{2,4})?", // phone
+    // Year pairs and year ranges are matched first and passed through verbatim.
+    // Redacting inside one is how "Worked on 2018-2020 roadmap" came back as
+    // "Worked on [[2018-2020]] roadmap" - the text looked broken rather than
+    // private, and the year was the one thing in it that was not contact
+    // information to begin with.
+    `(?<keep>${YEAR_RANGE_SOURCE})`,
+    `(?<keepPair>${YEAR_PAIR_SOURCE})`,
+    EMAIL_SOURCE,
+    LINKEDIN_SOURCE,
+    GITHUB_SOURCE,
+    URL_SOURCE,
+    `(?<phone>${PHONE_FORMATTED_SOURCE}|${PHONE_BARE_SOURCE})`,
   ].join("|"),
-  "gi",
+  "giu",
 );
 
 const EMAIL_LABEL = "[email removed]";
@@ -49,6 +85,28 @@ export interface RedactedText {
 }
 
 /**
+ * The whole run of number-and-separator characters a phone match sits in.
+ *
+ * A phone pattern stops as soon as it has a plausible-looking group, so
+ * `issue 1234 5678 9012 3456` used to redact the first three groups and leave
+ * the fourth. Widening to the full run and then asking the detector whether that
+ * run is a phone means the redactor can only ever hide a whole run, and can
+ * never hide one while the report claims there was nothing to hide.
+ */
+function phoneRun(input: string, start: number, end: number): { start: number; end: number } | null {
+  let from = start;
+  let to = end;
+  while (from > 0 && PHONE_RUN_CHARACTER.includes(input.charAt(from - 1))) from -= 1;
+  while (to < input.length && PHONE_RUN_CHARACTER.includes(input.charAt(to))) to += 1;
+  while (from < to && PHONE_RUN_EDGE.includes(input.charAt(from))) from += 1;
+  while (to > from && PHONE_RUN_EDGE.includes(input.charAt(to - 1))) to -= 1;
+
+  const run = input.slice(from, to);
+  if (run.length === 0) return null;
+  return isLikelyPhoneNumber(run) ? { start: from, end: to } : null;
+}
+
+/**
  * Replace contact details with a short label, keeping an offset map so callers
  * can still position marks against the original text.
  */
@@ -67,18 +125,43 @@ export function redactContact(input: string): RedactedText {
     out += input.slice(from, to);
   };
 
-  const regex = new RegExp(PATTERN.source, PATTERN.flags);
+  // `PATTERN` is module-scoped and global, so its lastIndex survives between
+  // calls. Clearing it first keeps the result independent of call order.
+  PATTERN.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(input)) !== null) {
+  while ((match = PATTERN.exec(input)) !== null) {
     if (match[0].length === 0) {
-      regex.lastIndex += 1;
+      PATTERN.lastIndex += 1;
       continue;
     }
-    copyChunk(cursor, match.index);
-    const label = labelFor(match[0]);
+    const groups = match.groups ?? {};
+    const matchStart = match.index;
+    const matchEnd = matchStart + match[0].length;
+
+    if (groups.keep !== undefined || groups.keepPair !== undefined) {
+      copyChunk(cursor, matchEnd);
+      cursor = matchEnd;
+      continue;
+    }
+
+    let redactStart = matchStart;
+    let redactEnd = matchEnd;
+    if (groups.phone !== undefined) {
+      const run = phoneRun(input, matchStart, matchEnd);
+      if (run === null) {
+        copyChunk(cursor, matchEnd);
+        cursor = matchEnd;
+        continue;
+      }
+      redactStart = run.start;
+      redactEnd = run.end;
+    }
+
+    copyChunk(cursor, redactStart);
+    const label = labelFor(input.slice(redactStart, redactEnd));
     spans.push({ start: out.length, end: out.length + label.length });
     out += label;
-    cursor = match.index + match[0].length;
+    cursor = redactEnd;
     redacted = true;
   }
   copyChunk(cursor, input.length);

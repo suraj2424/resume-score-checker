@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils/cn";
-import { TONE_BAR, type Tone } from "@/components/ui/badge";
+﻿import { cn } from "@/lib/utils/cn";
+import { TONE_DOT, type Tone } from "@/components/ui/badge";
 
 /**
  * A category's share of the score, drawn on the same scale as the total: a bar
@@ -31,7 +31,7 @@ export function CategoryScoreBar({
         aria-valuemax={possible}
       >
         <div
-          className={cn("h-full transition-[width] duration-500", TONE_BAR[tone])}
+          className={cn("h-full transition-[width] duration-500", TONE_DOT[tone])}
           style={{ width: `${percentOfPossible}%` }}
         />
       </div>

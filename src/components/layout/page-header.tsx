@@ -17,11 +17,13 @@ export function PageHeader({
   return (
     <header className="flex flex-col gap-4 border-b border-rule-2 pb-8">
       <p className="label">{label}</p>
-      <h1 className="max-w-[18ch] text-[2.25rem] leading-[1.03] tracking-[-0.032em] text-ink sm:text-[2.875rem]">
-        {title}
-      </h1>
+      {/* No size here on purpose: the base `h1` rule in `globals.css` is the
+          scale, and this override was one of four h1 sizes on the site that all
+          claimed the same slot. `text-ink` stays because the base rule sets
+          colour from the token and a prose page has no reason to differ. */}
+      <h1 className="max-w-[18ch] text-ink">{title}</h1>
       <div className="flex flex-col gap-3">
-        <p className="max-w-[64ch] text-[17px] leading-relaxed text-ink-2">{standfirst}</p>
+        <p className="max-w-[58ch] text-[17px] leading-relaxed text-ink-2">{standfirst}</p>
         {meta ? <p className="figure text-ink-3">{meta}</p> : null}
       </div>
     </header>

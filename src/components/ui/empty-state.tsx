@@ -8,6 +8,9 @@ import { TONE_DOT, TONE_RULE, type Tone } from "./badge";
  *
  * `tone` is only for empty states that are genuinely a result — a report with
  * nothing left to fix is a pass, not an absence.
+ *
+ * `rounded-[3px]` is `--radius-md`, the same 2px paper corner every other
+ * bordered container in the system takes.
  */
 export function EmptyState({
   title,
@@ -24,8 +27,9 @@ export function EmptyState({
 }) {
   return (
     <div
+      data-slot="empty-state"
       className={cn(
-        "flex flex-col items-start gap-3 border border-rule border-l-2 bg-sheet px-6 py-8",
+        "flex flex-col items-start gap-3 rounded-[3px] border border-rule border-l-2 bg-sheet px-6 py-8",
         tone && TONE_RULE[tone],
         className,
       )}
@@ -37,7 +41,7 @@ export function EmptyState({
         {title}
       </p>
       {description ? (
-        <p className="max-w-[52ch] text-[14px] leading-relaxed text-ink-2">{description}</p>
+        <p className="max-w-[66ch] text-[14px] leading-relaxed text-ink-2">{description}</p>
       ) : null}
       {action}
     </div>

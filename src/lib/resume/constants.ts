@@ -16,14 +16,16 @@ export interface SectionDefinition {
 
 /** Known resume sections and the headings recruitsers commonly use. */
 export const SECTION_DEFINITIONS: SectionDefinition[] = [
-  {
+{
     id: "summary",
     name: "Summary",
     aliases: [
       "summary",
       "professional summary",
-      "profile",
+      "career summary",
+      "executive summary",
       "professional profile",
+      "profile",
       "objective",
       "career objective",
       "about me",
@@ -39,12 +41,12 @@ export const SECTION_DEFINITIONS: SectionDefinition[] = [
       "experience",
       "work experience",
       "professional experience",
+      "relevant experience",
+      "industry experience",
       "employment",
       "employment history",
       "work history",
       "career history",
-      "relevant experience",
-      "industry experience",
     ],
   },
   {
@@ -64,13 +66,15 @@ export const SECTION_DEFINITIONS: SectionDefinition[] = [
     ],
   },
   {
-    id: "skills",
+id: "skills",
     name: "Skills",
     aliases: [
       "skills",
       "technical skills",
       "core skills",
       "core competencies",
+      "key competencies",
+      "competencies",
       "key skills",
       "areas of expertise",
       "expertise",
@@ -108,11 +112,13 @@ export const SECTION_DEFINITIONS: SectionDefinition[] = [
   {
     id: "awards",
     name: "Awards and achievements",
-    aliases: [
+aliases: [
       "awards",
       "achievements",
       "honors",
       "honours",
+      "awards and honors",
+      "awards and honours",
       "accomplishments",
       "recognition",
       "awards and achievements",
@@ -156,13 +162,6 @@ export const SECTION_DEFINITIONS: SectionDefinition[] = [
     aliases: ["references", "referees"],
   },
 ];
-
-/**
- * Sections that satisfy "practical experience" expectations for candidates
- * without professional employment history (students, freshers, career
- * switchers).
- */
-export const EQUIVALENT_EXPERIENCE_SECTIONS = ["internships", "projects", "volunteer", "activities"];
 
 /* ------------------------------------------------------------------ */
 /* Language signals                                                    */
@@ -591,3 +590,267 @@ export const MONTH_ABBREVIATIONS = [
   "nov",
   "dec",
 ];
+
+/* ------------------------------------------------------------------ */
+/* Metric dictionaries                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Words that make a number a headcount or an item count ("8 users", "3 teams").
+ *
+ * Deliberately a closed list rather than "any plural noun": a detector that
+ * fires on everything tells the reader nothing, and four points of scoring ride
+ * on the difference between a measurement and a version number.
+ */
+export const COUNTABLE_NOUNS = [
+  "users",
+  "customers",
+  "clients",
+  "teams",
+  "engineers",
+  "developers",
+  "people",
+  "employees",
+  "staff",
+  "members",
+  "students",
+  "seats",
+  "licenses",
+  "subscriptions",
+  "subscribers",
+  "servers",
+  "instances",
+  "nodes",
+  "endpoints",
+  "requests",
+  "queries",
+  "tickets",
+  "bugs",
+  "issues",
+  "incidents",
+  "features",
+  "projects",
+  "partners",
+  "vendors",
+  "stores",
+  "branches",
+  "regions",
+  "countries",
+  "cities",
+  "products",
+  "campaigns",
+  "channels",
+  "markets",
+  "departments",
+  "lines",
+  "pages",
+  "documents",
+  "reports",
+  "apps",
+  "services",
+  "modules",
+  "components",
+  "repositories",
+  "environments",
+  "pipelines",
+  "datasets",
+  "experiments",
+  "records",
+  "accounts",
+  "invoices",
+  "orders",
+  "transactions",
+  "candidates",
+  "databases",
+  "tables",
+  "clusters",
+  "containers",
+  "functions",
+  "workflows",
+  "scripts",
+  "automations",
+  "integrations",
+  "screens",
+  "layouts",
+  "mockups",
+  "handovers",
+  "shifts",
+  "locations",
+  "stores",
+  "suppliers",
+  "shipments",
+  "leases",
+  "donors",
+  "volunteers",
+  "sessions",
+  "workshops",
+  "webinars",
+  "lessons",
+  "assignments",
+  "deadlines",
+  "releases",
+  "versions",
+  "tickets",
+  "sprints",
+  "onboarding",
+  "pull",
+  "pulls",
+  "merges",
+  "releases",
+];
+
+/**
+ * Tokens that turn a following number into an identifier rather than a
+ * measurement: "v2", "Node 18", "Level 2", "ISO 9001".
+ */
+export const VERSION_PREFIX_TOKENS = [
+  "v",
+  "ver",
+  "vers",
+  "version",
+  "release",
+  "rel",
+  "rev",
+  "revision",
+  "build",
+  "no",
+  "num",
+  "number",
+  "id",
+  "iso",
+  "iec",
+  "ansi",
+  "level",
+  "tier",
+  "grade",
+  "class",
+  "section",
+  "chapter",
+  "step",
+  "phase",
+  "stage",
+  "round",
+  "type",
+  "series",
+  "edition",
+  "size",
+  "versioned",
+  "model",
+  "models",
+  "node",
+  "python",
+  "java",
+  "jdk",
+  "jre",
+  "sdk",
+  "api",
+  "iec61439",
+  "rfc",
+];
+
+/** Human-scale time units. "ms" is deliberately absent: `500ms` is a latency. */
+export const DURATION_UNITS = [
+  "second",
+  "seconds",
+  "sec",
+  "secs",
+  "minute",
+  "minutes",
+  "min",
+  "mins",
+  "hour",
+  "hours",
+  "hr",
+  "hrs",
+  "day",
+  "days",
+  "week",
+  "weeks",
+  "month",
+  "months",
+  "quarter",
+  "quarters",
+  "year",
+  "years",
+  "yr",
+  "yrs",
+  "decade",
+  "decades",
+];
+
+/**
+ * Units that make a number a technical specification rather than an outcome.
+ * Anything here is `ambiguous`: a reader who wanted a result cannot use it.
+ */
+export const TECHNICAL_UNITS = [
+  "ms",
+  "msec",
+  "msecs",
+  "millisecond",
+  "milliseconds",
+  "kb",
+  "mb",
+  "gb",
+  "tb",
+  "pb",
+  "kbps",
+  "mbps",
+  "gbps",
+  "px",
+  "pt",
+  "em",
+  "rem",
+  "dpi",
+  "fps",
+  "hz",
+  "khz",
+  "mhz",
+  "ghz",
+  "rpm",
+  "v",
+  "w",
+  "kw",
+  "mw",
+  "ma",
+  "kb/s",
+  "qps",
+];
+
+/** ISO codes that turn a bare number into money. */
+export const CURRENCY_CODES = [
+  "usd",
+  "eur",
+  "gbp",
+  "inr",
+  "aud",
+  "cad",
+  "jpy",
+  "chf",
+  "sgd",
+  "aed",
+  "nzd",
+  "zar",
+  "brl",
+  "mxn",
+  "krw",
+  "cny",
+  "rmb",
+];
+
+/**
+ * Scale suffixes, applied only when a currency symbol or code is already
+ * present. A bare "3k engineers" is a headcount claim we cannot verify, so it
+ * stays a count rather than becoming 3000 of something.
+ */
+export const CURRENCY_SCALES: Record<string, number> = {
+  k: 1e3,
+  thousand: 1e3,
+  m: 1e6,
+  mn: 1e6,
+  million: 1e6,
+  bn: 1e9,
+  b: 1e9,
+  billion: 1e9,
+  lakh: 1e5,
+  crore: 1e7,
+};

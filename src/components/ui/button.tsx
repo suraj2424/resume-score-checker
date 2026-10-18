@@ -18,17 +18,22 @@ const buttonVariants = cva(
           "border border-rule-2 bg-sheet text-ink hover:bg-sheet-tint active:bg-sheet-tint",
         quiet:
           "border border-transparent bg-transparent text-ink-2 hover:bg-sheet-tint hover:text-ink",
-        underline:
-          "h-auto rounded-none p-0 text-ink underline decoration-rule-2 decoration-1 underline-offset-4 hover:decoration-ink",
         danger:
           "border border-issue/30 bg-issue/10 text-issue hover:bg-issue hover:text-white",
       },
+      /*
+        Every remaining step is a height and a font size, so `size` means one
+        thing in this file. `variant="underline"` and `size="icon"` are gone
+        because nothing used them: the underline treatment is the `.link` class
+        on a plain anchor (a Button that is a link is a different component), and
+        every icon-only control in the product is a raw button with its own
+        frame — the segmented theme control, the accordion row, the masthead.
+      */
       size: {
         xs: "h-7 px-2 text-[12px] [&_svg]:size-3.5",
         sm: "h-8 px-3 text-[13px] [&_svg]:size-3.5",
         default: "h-10 px-4 [&_svg]:size-4",
         lg: "h-12 px-6 text-[15px] [&_svg]:size-4",
-        icon: "size-9",
       },
     },
     defaultVariants: {
@@ -50,6 +55,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         ref={ref}
+        data-slot="button"
         className={cn(buttonVariants({ variant, size, className }))}
         {...props}
       />

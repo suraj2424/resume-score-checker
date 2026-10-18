@@ -16,15 +16,19 @@ export function ProofExcerpt() {
         <span className="figure text-ink-3">Page 1 of 1</span>
       </figcaption>
 
-      <div className="flex flex-col gap-7 px-5 py-6 sm:px-6 sm:py-8">
+      <div className="flex flex-col gap-7 px-5 py-6 sm:px-7 sm:py-8">
         <header className="flex flex-col gap-1">
           <p className="text-[17px] font-bold tracking-[-0.02em] text-ink">Ada Okonkwo</p>
           <p className="text-[13px] text-ink-2">Backend Engineer</p>
         </header>
 
         <section className="grid gap-x-8 gap-y-2 border-t border-rule pt-6 md:grid-cols-[8.5rem_1fr]">
+          {/* "Experience" and "Skills" are headings inside a picture of a
+              document, not headings in this one. As `<h3>` they put a real
+              `h1 → h3` jump with no h2 between them into the outline and
+              announced two headings that lead nowhere. */}
           <div className="md:col-start-2">
-            <h3 className="label text-ink-3">Experience</h3>
+            <span className="label text-ink-3">Experience</span>
           </div>
           <div className="flex flex-col gap-2 md:col-start-2">
             <p className="text-[14px] leading-relaxed text-ink-2">
@@ -43,11 +47,11 @@ export function ProofExcerpt() {
                 </li>
               ))}
             </ul>
-            <p className="mark-wash -mx-1 mt-1 w-fit rounded-[2px] border-l-2 border-issue px-1.5 py-1 text-[12px] leading-relaxed text-mark-ink">
+            <p className="mark-wash -mx-1 mt-1 w-fit rounded-[2px] border-l-2 border-issue px-1.5 py-1 text-[13px] leading-relaxed text-mark-ink">
               Issue · no outcome is stated in any of these lines.
             </p>
           </div>
-          <p className="margin-note self-start text-[12px] leading-relaxed text-ink-2 md:col-start-1 md:row-start-2">
+          <p className="margin-note self-start text-[13px] leading-relaxed text-ink-2 md:col-start-1 md:row-start-2">
             <span className="figure block text-ink-3">bullets</span>
             Six bullets, none carrying a number.
           </p>
@@ -55,18 +59,18 @@ export function ProofExcerpt() {
 
         <section className="grid gap-x-8 gap-y-2 border-t border-rule pt-6 md:grid-cols-[8.5rem_1fr]">
           <div className="md:col-start-2">
-            <h3 className="label text-ink-3">Skills</h3>
+            <span className="label text-ink-3">Skills</span>
           </div>
           <div className="flex flex-col gap-1.5 md:col-start-2">
             <p className="text-[14px] leading-relaxed text-ink-2">
               Familiar with Python, Postgres, Docker, Kubernetes and AWS
             </p>
             <p className="figure text-ink-3">01/04/2021 — 12/2022</p>
-            <p className="mark-wash -mx-1 mt-1 w-fit rounded-[2px] border-l-2 border-caution px-1.5 py-1 text-[12px] leading-relaxed text-mark-ink">
+            <p className="mark-wash -mx-1 mt-1 w-fit rounded-[2px] border-l-2 border-caution px-1.5 py-1 text-[13px] leading-relaxed text-mark-ink">
               Warning · two date formats, and skills read as prose.
             </p>
           </div>
-          <p className="margin-note self-start text-[12px] leading-relaxed text-ink-2 md:col-start-1 md:row-start-2">
+          <p className="margin-note self-start text-[13px] leading-relaxed text-ink-2 md:col-start-1 md:row-start-2">
             <span className="figure block text-ink-3">dates</span>
             Pick one date format and use it everywhere.
           </p>

@@ -30,6 +30,15 @@ export interface DocumentStructure {
   imageOnlyPages?: number[];
   /** PDF was password protected / encrypted and could not be opened. */
   encrypted?: boolean;
+  /**
+   * Lines whose text was interleaved from two side-by-side columns. This is
+   * the measurable form of "ATS reads this in the wrong order" — a PDF that
+   * fuses a left-column bullet into the right-column bullet on the same visual
+   * row produces a line no human ever wrote.
+   */
+  interleavedLineCount?: number;
+  /** Pages whose runs could not be ordered into lines with confidence. */
+  ambiguousPageCount?: number;
 }
 
 /** Raw extraction result from a parser, before normalization/detection. */
@@ -60,6 +69,53 @@ export interface ResumeDate {
   raw: string;
   year: number;
   family: DateFormatFamily;
+  /** Month 1-12 when the token carried one. `Jan 2021` and `Dec 2021` differ. */
+  month?: number;
+  /** Character offset in the normalized text. Document order is preserved. */
+  index: number;
+}
+
+/**
+ * Two date tokens that belong to the same employment or education span.
+ *
+ * This exists because a bare year is not an ordering key. `Mar 2022 - Present`
+ * has to sort as *newer* than `Jan 2019 - Dec 2024`, which no single scalar
+ * year can express: the current role's latest concrete year is its start.
+ */
+export interface ResumeDateRange {
+  /** Verbatim text of the range as written. */
+  raw: string;
+  startYear: number;
+  startMonth?: number;
+  /** `null` when the range is still open (a current role). */
+  endYear: number | null;
+  endMonth?: number;
+  /** True when the range ends in Present / Current / now. */
+  isPresent: boolean;
+  /** Character offset of the range start in the normalized text. */
+  index: number;
+  /** True when both endpoints were understood well enough to compare. */
+  isComplete: boolean;
+}
+
+/**
+ * A number in a bullet, classified by what it actually measures.
+ *
+ * A bare `/\d/` test cannot tell "grew revenue 30%" from "released in 2020",
+ * "Node 18", "v2" or "ISO 9001" — all of which contain digits and none of which
+ * is an outcome. Four points used to rest on that boolean.
+ */
+export type MetricKind = "percent" | "currency" | "count" | "multiplier" | "duration" | "ambiguous";
+
+export interface Metric {
+  kind: MetricKind;
+  /** Parsed value. Zero when the match could not be parsed numerically. */
+  value: number;
+  /** The exact text that produced the metric, for evidence. */
+  raw: string;
+  /** Offsets into the string that was passed to `extractMetrics`. */
+  start: number;
+  end: number;
 }
 
 export interface ResumeSection {
@@ -70,6 +126,8 @@ export interface ResumeSection {
   content: string;
   startIndex: number;
   endIndex: number;
+  /** Position among the detected sections, from 0, in document order. */
+  order: number;
 }
 
 /**
@@ -136,6 +194,16 @@ export interface DetectedSkill {
   count: number;
 }
 
+/** One exact bullet text that was used more than once. */
+export interface DuplicateBulletFinding {
+  /** The repeated text, already redacted for display safety. */
+  text: string;
+  /** How many times this exact text appears in the document. */
+  count: number;
+  /** Copies beyond the first — what the reader has to delete. */
+  extraCopies: number;
+}
+
 export interface ContactInfo {
   hasEmail: boolean;
   hasPhone: boolean;
@@ -176,15 +244,30 @@ export interface ParsedResume {
   fileName: string;
   fileType: ResumeFileType;
   pageCount?: number;
+  /**
+   * Verbatim extracted text. Scoring needs it; the display boundary must never
+   * render it. Redaction runs on the way out (see `redact.ts`), so redacting
+   * here would make a present email look like a missing one.
+   */
   rawText: string;
   normalizedText: string;
+  /** Structural facts observed by the parser. Formatting and readability read it. */
+  documentStructure?: DocumentStructure;
   sections: ResumeSection[];
   contact: ContactInfo;
   bullets: ResumeBullet[];
   dates: ResumeDate[];
+  /** Paired date spans, in document order. Powers durations and chronology. */
+  dateRanges: ResumeDateRange[];
   skills: DetectedSkill[];
   /** Number of mentions of generic buzzword terms (e.g. "teamwork"). */
   genericTermMentions: number;
+  /**
+   * Text of each bullet that appears more than once, with how often. The
+   * duplicate rule reads this directly instead of re-parsing an English
+   * sentence — rewording that sentence used to silently change the score.
+   */
+  duplicateBullets: DuplicateBulletFinding[];
   formattingSignals: FormattingSignal[];
   parsingWarnings: ParsingWarning[];
   stats: ResumeTextStats;
@@ -247,6 +330,8 @@ export interface ScoreCategory {
   possible: number;
   checksEvaluated: number;
   checksTotal: number;
+  notApplicable: number;
+  unableToVerify: number;
 }
 
 export type RecommendationPriority = "high" | "medium" | "low";
@@ -262,6 +347,25 @@ export interface Recommendation {
   severity: CheckSeverity;
 }
 
+/**
+ * Why a check contributed no points.
+ *
+ * These are two different facts and the report must not conflate them:
+ * `not-applicable` means the check did not need to run (the user is not
+ * expected to have a projects section on a first resume); `unable-to-verify`
+ * means it wanted to run and the document would not let it.
+ */
+export interface ScoreCoverage {
+  /** Checks that ran and produced a definite answer. */
+  checksEvaluated: number;
+  checksTotal: number;
+  /** Checks deliberately skipped as out of scope for this document. */
+  notApplicable: number;
+  /** Checks that wanted to run but the extracted text could not support. */
+  unableToVerify: number;
+  warnings: string[];
+}
+
 export interface ScoreReport {
   score: number;
   scoreBand: ScoreBand;
@@ -269,11 +373,7 @@ export interface ScoreReport {
   results: CheckResultWithMetadata[];
   criticalIssues: CheckResultWithMetadata[];
   recommendations: Recommendation[];
-  coverage: {
-    checksEvaluated: number;
-    checksTotal: number;
-    warnings: string[];
-  };
+  coverage: ScoreCoverage;
   scoringVersion: string;
   /** File name of the analyzed document. */
   fileName: string;

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { SCORE_BANDS, SCORING_CATEGORIES } from "@/config/scoring";
 import { siteConfig } from "@/config/site";
 
 export const alt = `${siteConfig.name} — free resume score checker`;
@@ -12,6 +13,25 @@ const INK_2 = "#5D5B54";
 const INK_3 = "#8B8980";
 const RULE = "#DFDDD4";
 const MARK = "#FFE45C";
+
+/**
+ * Satori renders literal strings, so the check count below is the one number in
+ * the app that cannot read `ALL_CHECKS` itself. Keep it equal to
+ * `ALL_CHECKS.length` — the sync is meant to be asserted by a test over this
+ * file's source, because nothing here can catch a check being added without
+ * the card being updated, and the card is the first thing a stranger sees.
+ */
+const PUBLISHED_CHECK_COUNT = 36;
+
+/**
+ * The drawn scale's fill is the `strong` band floor rather than a percentage
+ * picked to look plausible. `SCORE_BANDS` runs best → worst, so the second
+ * entry is `strong`; destructured instead of indexed so the element type stays
+ * exact under `noUncheckedIndexedAccess`. 75 lands the fill on the printed tick
+ * below it, so the bar and the band ladder agree instead of the card claiming
+ * a score nothing in the scoring config recognises.
+ */
+const [, STRONG_BAND] = SCORE_BANDS;
 
 /** Static Open Graph card generated at build time — no external services. */
 export default function OpengraphImage() {
@@ -92,15 +112,20 @@ export default function OpengraphImage() {
               Your resume, marked up before you send it.
             </div>
             <div style={{ fontSize: 27, color: INK_2, maxWidth: 880, lineHeight: 1.45 }}>
-              31 published checks across 5 weighted categories. Deterministic score, no AI, and
-              your file never leaves the browser.
+              {`${PUBLISHED_CHECK_COUNT} published checks across ${SCORING_CATEGORIES.length} weighted categories. Deterministic score, no AI, and your file never leaves the browser.`}
             </div>
           </div>
 
           {/* The scale, drawn to the same measure as the score itself. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", height: 10, backgroundColor: RULE }}>
-              <div style={{ display: "flex", width: "78%", backgroundColor: INK }} />
+              <div
+                style={{
+                  display: "flex",
+                  width: `${STRONG_BAND.min}%`,
+                  backgroundColor: INK,
+                }}
+              />
             </div>
             <div
               style={{

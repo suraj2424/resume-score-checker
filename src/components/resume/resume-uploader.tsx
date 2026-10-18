@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils/cn";
 
 const MAX_SIZE_LABEL = formatFileSize(MAX_UPLOAD_BYTES);
 
+/** Binds the visible type/size constraint to the button that opens the picker. */
+const FILE_HINT_ID = "resume-file-hint";
+
 export interface SelectedFile {
   file: File;
   name: string;
@@ -43,6 +46,12 @@ export const ResumeUploader = React.forwardRef<
   // a real button that asks the input to open, rather than a file input styled
   // to look like a button: nesting one inside the other meant the click never
   // reached the input at all.
+  //
+  // The input therefore stays `sr-only` and out of the tab order: it kept a
+  // focusable 1x1px target beside the visible button, so keyboard users hit the
+  // same control twice and the second time on an invisible ring. The button is
+  // the only thing that should be reachable, and `.click()` reaches the input
+  // either way.
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useImperativeHandle(
@@ -74,14 +83,16 @@ export const ResumeUploader = React.forwardRef<
         }}
         onDrop={handleDrop}
         className={cn(
-          "flex flex-col gap-5 border border-dashed p-6 transition-colors sm:p-8",
+          "flex flex-col gap-5 rounded-[3px] border border-dashed p-6 transition-colors sm:p-8",
           isDragging ? "border-ink bg-accent" : "border-rule-2 bg-sheet hover:border-ink-3",
           disabled && "opacity-60",
         )}
         aria-disabled={disabled}
       >
         <div className="flex flex-col gap-2">
-          <p className="label">PDF or DOCX, up to {MAX_SIZE_LABEL}</p>
+          <p className="label" id={FILE_HINT_ID}>
+            PDF or DOCX, up to {MAX_SIZE_LABEL}
+          </p>
           <p className="max-w-[34ch] text-[1.5rem] font-semibold leading-[1.15] tracking-[-0.026em] text-ink sm:text-[1.75rem]">
             {isDragging ? "Release to start the check" : "Drop your resume here"}
           </p>
@@ -91,25 +102,35 @@ export const ResumeUploader = React.forwardRef<
           </p>
         </div>
 
+        {/* Reachable by the button and by drag-and-drop only. `aria-hidden`
+            plus `tabIndex={-1}` keeps it out of the accessibility tree and out
+            of the tab order together — `aria-hidden` alone on a focusable
+            element is the violation, not the fix. */}
         <input
           ref={inputRef}
           type="file"
           accept={accept}
           disabled={disabled}
           className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(event) => {
             const files = event.target.files;
             if (files && files.length > 0) onFilesSelected(files);
             event.target.value = "";
           }}
-          aria-label="Choose a resume file"
         />
 
+        {/* Taking the input out of the tab order also took its `accept` list out
+            of the accessibility tree, so the visible constraint is described onto
+            the control that actually opens the picker instead of being left as
+            nearby text nobody is pointed at. */}
         <Button
           size="lg"
           className="w-full"
           disabled={disabled}
           type="button"
+          aria-describedby={FILE_HINT_ID}
           onClick={() => inputRef.current?.click()}
         >
           <FileText aria-hidden="true" />
@@ -120,10 +141,10 @@ export const ResumeUploader = React.forwardRef<
       </div>
 
       {selectedFile ? (
-        <div className="flex flex-wrap items-center gap-3 border border-rule bg-sheet-tint px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-[3px] border border-rule bg-sheet-tint px-4 py-3">
           <span
             aria-hidden="true"
-            className="figure shrink-0 border border-rule bg-sheet px-2 py-1 text-ink"
+            className="figure shrink-0 rounded-[3px] border border-rule bg-sheet px-2 py-1 text-ink"
           >
             {selectedFile.name.toLowerCase().endsWith(".pdf") ? "PDF" : "DOCX"}
           </span>

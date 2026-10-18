@@ -10,6 +10,7 @@ import {
   type BulletInsight,
 } from "@/lib/resume/bullet-insights";
 import { overlapsRedaction, redactContact } from "@/lib/resume/redact";
+import { bulletMarkClass } from "@/components/ui/tones";
 import type { BulletMark, ResumeBullet } from "@/lib/resume/types";
 
 /**
@@ -21,26 +22,11 @@ import type { BulletMark, ResumeBullet } from "@/lib/resume/types";
  *
  * Text is built from sliced strings, never from innerHTML, and contact details
  * are redacted before anything is rendered, so the report keeps the promise on
- * the privacy page that it never displays an address, number or link.
+ * the privacy page that it never displays an address, number or link. That
+ * redaction stays even though the score engine now redacts evidence centrally:
+ * this component is the one that renders whole bullet lines, and it is the last
+ * thing between the raw text and the page.
  */
-
-const MARK_WASH: Record<BulletMark["kind"], string> = {
-  "too-long": "bg-caution-wash",
-  "too-short": "bg-issue-wash",
-  "weak-phrase": "bg-issue-wash",
-  "first-person": "bg-caution-wash",
-  "no-action-verb": "bg-caution-wash",
-  "no-outcome": "bg-caution-wash",
-};
-
-const MARK_TEXT: Record<BulletMark["kind"], string> = {
-  "too-long": "text-caution",
-  "too-short": "text-issue",
-  "weak-phrase": "text-issue",
-  "first-person": "text-caution",
-  "no-action-verb": "text-caution",
-  "no-outcome": "text-caution",
-};
 
 /** The summary line, in the order a reader should act on them. */
 const MARK_ORDER: Array<{ kind: BulletMark["kind"]; noun: string }> = [
@@ -51,6 +37,23 @@ const MARK_ORDER: Array<{ kind: BulletMark["kind"]; noun: string }> = [
   { kind: "too-short", noun: "too thin" },
   { kind: "first-person", noun: "in the first person" },
 ];
+
+/**
+ * How many annotated marks are open on a bullet before the rest are folded.
+ *
+ * Screen-only. Nothing is dropped: `bullet-insights` returns every mark, and
+ * the ones past this count are rendered with `hidden print:block`, so the
+ * printed page annotates every mark the screen folds away.
+ */
+const OPEN_MARKS = 3;
+
+/**
+ * Bullets shown before the "show more" affordance. Same rule as the marks above
+ * — all of them are in the DOM, the overflow is hidden on screen and restored
+ * by the print stylesheet. A `slice` here plus a `no-print` reveal button meant
+ * the seventh bullet could never reach paper.
+ */
+const PAGE = 6;
 
 interface Piece {
   text: string;
@@ -92,17 +95,23 @@ function toPieces(bullet: ResumeBullet, marks: BulletMark[]): Piece[] {
   return pieces.length > 0 ? pieces : [{ text }];
 }
 
-function MarkedBullet({ insight }: { insight: BulletInsight }) {
+function markKey(bullet: ResumeBullet, mark: BulletMark): string {
+  return `bullet-${bullet.position}-${mark.kind}-${mark.start}-${mark.end}`;
+}
+
+function MarkedBullet({ insight, hiddenRow }: { insight: BulletInsight; hiddenRow: boolean }) {
   const { bullet, marks, tone } = insight;
   const pieces = React.useMemo(() => toPieces(bullet, marks), [bullet, marks]);
-  // A bullet can collect four or more findings. Showing all of them makes the
-  // annotation column taller than the text it annotates and buries the proof,
-  // so the rest are counted rather than listed.
-  const shown = marks.slice(0, 3);
-  const hidden = marks.length - shown.length;
+  const [showAllMarks, setShowAllMarks] = React.useState(false);
+  const folded = marks.length - OPEN_MARKS;
 
   return (
-    <li className="grid gap-x-8 gap-y-3 border-t border-rule py-6 lg:grid-cols-[1fr_17rem]">
+    <li
+      className={cn(
+        "grid gap-x-8 gap-y-3 border-t border-rule py-6 lg:grid-cols-[minmax(0,1fr)_17rem]",
+        hiddenRow && "hidden print:block",
+      )}
+    >
       <div className="min-w-0">
         <p className="figure mb-2 text-ink-3">
           Bullet {bullet.position}
@@ -111,14 +120,17 @@ function MarkedBullet({ insight }: { insight: BulletInsight }) {
         <p className="max-w-[58ch] text-[15px] leading-[1.7] text-ink-2">
           {pieces.map((piece, index) =>
             piece.mark ? (
+              /*
+                `aria-describedby` onto the annotation rather than `title`:
+                a native tooltip is unreachable by keyboard and invisible to a
+                screen reader, so the only channel it opened was the Badge in the
+                next column — which is a sighted affordance the mark itself never
+                referenced. The description is the same text a mouse reader saw.
+              */
               <mark
                 key={index}
-                className={cn(
-                  "rounded-[2px] px-0.5 py-px",
-                  MARK_WASH[piece.mark.kind],
-                  MARK_TEXT[piece.mark.kind],
-                )}
-                title={piece.mark.label}
+                aria-describedby={markKey(bullet, piece.mark)}
+                className={cn("rounded-[2px] px-0.5 py-px", bulletMarkClass(piece.mark.kind))}
               >
                 {piece.text}
               </mark>
@@ -130,24 +142,36 @@ function MarkedBullet({ insight }: { insight: BulletInsight }) {
       </div>
 
       <div className="flex flex-col gap-3 lg:border-l lg:border-rule lg:pl-5">
-        {shown.map((mark) => (
-          <div key={`${mark.kind}-${mark.start}-${mark.end}`} className="flex flex-col gap-1">
-            <Badge tone={tone}>{mark.label}</Badge>
-            <p className="figure text-ink-3">{mark.detail}</p>
-            <p className="text-[13px] leading-relaxed text-ink-2">{mark.fix}</p>
-          </div>
-        ))}
-        {hidden > 0 ? (
-          <p className="figure text-ink-3">
-            and {hidden} more {hidden === 1 ? "mark" : "marks"} on this line
-          </p>
+        {marks.map((mark, index) => {
+          const hidden = !showAllMarks && index >= OPEN_MARKS;
+          return (
+            <div
+              key={markKey(bullet, mark)}
+              id={markKey(bullet, mark)}
+              className={cn("flex flex-col gap-1", hidden && "hidden print:block")}
+            >
+              <Badge tone={tone}>{mark.label}</Badge>
+              {mark.detail ? <p className="figure text-ink-3">{mark.detail}</p> : null}
+              {mark.fix ? (
+                <p className="text-[13px] leading-relaxed text-ink-2">{mark.fix}</p>
+              ) : null}
+            </div>
+          );
+        })}
+
+        {folded > 0 && !showAllMarks ? (
+          <button
+            type="button"
+            className="no-print self-start text-left text-[13px] font-medium text-ink-2 underline decoration-rule-2 underline-offset-4 hover:text-ink"
+            onClick={() => setShowAllMarks(true)}
+          >
+            {folded} more {folded === 1 ? "mark" : "marks"} on this line
+          </button>
         ) : null}
       </div>
     </li>
   );
 }
-
-const PAGE = 6;
 
 export function MarkedUpBullets({ bullets }: { bullets: ResumeBullet[] }) {
   const [limit, setLimit] = React.useState(PAGE);
@@ -182,7 +206,6 @@ export function MarkedUpBullets({ bullets }: { bullets: ResumeBullet[] }) {
   const summary = MARK_ORDER.filter((entry) => counts[entry.kind] > 0)
     .map((entry) => `${counts[entry.kind]} ${entry.noun}`)
     .join(", ");
-  const visible = insights.slice(0, limit);
 
   return (
     <div className="flex flex-col gap-6">
@@ -196,8 +219,12 @@ export function MarkedUpBullets({ bullets }: { bullets: ResumeBullet[] }) {
       </div>
 
       <ul className="flex flex-col">
-        {visible.map((insight) => (
-          <MarkedBullet key={insight.bullet.position} insight={insight} />
+        {insights.map((insight, index) => (
+          <MarkedBullet
+            key={insight.bullet.position}
+            insight={insight}
+            hiddenRow={index >= limit}
+          />
         ))}
       </ul>
 

@@ -15,22 +15,42 @@ const PRIORITY_LABEL: Record<Recommendation["priority"], string> = {
 };
 
 /**
- * The fix list is a numbered sequence — severity, recoverable points, then
- * confidence — so it is the one list on the page that carries order numbers.
+ * How many rows are open before the "show all" affordance is needed.
+ *
+ * A screen-only constant. Nothing is sliced: every row is in the DOM at all
+ * times, and the ones past this point carry `hidden print:block`. A client-side
+ * slice combined with a `no-print` reveal button meant the fourth fix could
+ * never reach paper — the button that would have revealed it was itself hidden
+ * on the printed page.
+ */
+const COLLAPSED_COUNT = 3;
+
+/**
+ * The fix list is a numbered sequence — one deterministic priority score, with
+ * ties broken by title — so it is the one list on the page that carries order
+ * numbers.
  */
 function RecommendationRow({
   recommendation,
   index,
+  hidden,
 }: {
   recommendation: Recommendation;
   index: number;
+  /** Past the fold on screen only; always printed. */
+  hidden: boolean;
 }) {
   const tone = priorityTone(recommendation.priority);
   // The action itself is ink, because ink means act. The rule beside it carries
   // the priority, so colour never has to label a next step as a warning.
 
   return (
-    <li className="grid gap-3 px-5 py-5 sm:grid-cols-[2.5rem_1fr] sm:gap-5 sm:px-7">
+    <li
+      className={cn(
+        "grid gap-3 px-5 py-5 sm:grid-cols-[2.5rem_1fr] sm:gap-5 sm:px-7",
+        hidden && "hidden print:block",
+      )}
+    >
       <span className="figure text-ink-3">{String(index + 1).padStart(2, "0")}</span>
       <div className="flex min-w-0 flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -44,9 +64,9 @@ function RecommendationRow({
           ) : null}
         </div>
 
-        <h4 className="text-[15px] font-semibold leading-snug tracking-[-0.012em] text-ink">
+        <h3 className="text-[15px] font-semibold leading-snug tracking-[-0.012em] text-ink">
           {recommendation.title}
-        </h4>
+        </h3>
         <p className="max-w-[62ch] text-[15px] leading-relaxed text-ink-2">
           {recommendation.explanation}
         </p>
@@ -77,17 +97,20 @@ export function PriorityFixes({ recommendations }: { recommendations: Recommenda
     );
   }
 
-  const visible = showAll ? recommendations : recommendations.slice(0, 3);
-
   return (
     <div className="flex flex-col gap-3">
       <ol className="slab flex flex-col divide-y divide-rule print-flat">
-        {visible.map((recommendation, i) => (
-          <RecommendationRow key={recommendation.checkId} recommendation={recommendation} index={i} />
+        {recommendations.map((recommendation, index) => (
+          <RecommendationRow
+            key={recommendation.checkId}
+            recommendation={recommendation}
+            index={index}
+            hidden={!showAll && index >= COLLAPSED_COUNT}
+          />
         ))}
       </ol>
 
-      {recommendations.length > 3 ? (
+      {recommendations.length > COLLAPSED_COUNT ? (
         <Button
           type="button"
           variant="quiet"
@@ -96,13 +119,14 @@ export function PriorityFixes({ recommendations }: { recommendations: Recommenda
           onClick={() => setShowAll((value) => !value)}
           aria-expanded={showAll}
         >
-          {showAll ? "Show the first three only" : `Show all ${recommendations.length}`}
+          {showAll ? `Show the first ${COLLAPSED_COUNT} only` : `Show all ${recommendations.length}`}
         </Button>
       ) : null}
 
-      <p className="text-[13px] leading-relaxed text-ink-3">
-        Ordered by severity, recoverable points and confidence. Fixing an item recovers at most the
-        points shown.
+      <p className="max-w-[62ch] text-[13px] leading-relaxed text-ink-3">
+        Ordered by one priority score combining severity, detection confidence and recoverable
+        points, with equal scores broken by title so the list is identical on every machine.
+        Fixing an item recovers at most the points shown.
       </p>
     </div>
   );

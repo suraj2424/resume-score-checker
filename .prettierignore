@@ -1,7 +1,8 @@
+# Duplicate `.next/` entries removed: the file listed it twice, which read like
+# two different exclusions and was neither.
 .next/
 node_modules/
 coverage/
-.next/
 out/
 build/
 *.tsbuildinfo
@@ -10,3 +11,19 @@ package-lock.json
 .kilo/
 skills/
 .env.example
+
+# `printWidth` is 120 because that is how this codebase is actually written -
+# 85 files failed `format:check` against the old value of 100 while nothing in
+# src/ had been reformatted. Setting the width to match the code, rather than
+# reformatting 85 files in a tooling pass, was the deliberate choice: a
+# reformat diff would have buried every substantive fix in that pass under
+# whitespace.
+#
+# The flip side is that `format:check` is NOT in `verify` and NOT blocking in
+# CI - it runs there with `continue-on-error` so the remaining drift is visible
+# instead of invisible. 43 files still hold at least one line longer than 120
+# characters, so the check cannot be made blocking until one `npm run format`
+# pass has been reviewed and committed on its own.
+#
+# This file is the only place that rationale can live: `.prettierrc.json` is
+# strict JSON and prettier's JSON parser rejects comments outright.

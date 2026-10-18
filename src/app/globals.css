@@ -1,6 +1,28 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* ==========================================================================
+   Interaction affordances — deliberately UNLAYERED
+   --------------------------------------------------------------------------
+   CSS Cascade Level 5: an unlayered normal declaration beats every layered
+   one. These two sit outside `@layer base` on purpose, because the Tailwind
+   `.outline-none` utility lives in `@layer utilities` and a base-layer
+   `:focus-visible` loses to it — which is how 30 check rows in the report
+   ended up with no focus indicator at all. Layering them would reinstate the
+   bug; unlayered is the fix.
+
+   Kept next to the import they have to outrank rather than down in `@layer
+   base`, so the next person to "tidy this into the base layer" sees why not.
+   ========================================================================== */
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--color-mark);
+  color: var(--color-mark-ink);
+}
 
 /* ==========================================================================
    PROOF SHEET — the design system
@@ -21,16 +43,21 @@
 
   /* — Surfaces — */
   --color-desk: #e6e5e0;
-  --color-desk-sunk: #dedcd5;
   --color-sheet: #ffffff;
   --color-sheet-tint: #f5f4ef;
-  --color-board: #efeee9;
 
-  /* — Ink — */
+  /* — Ink —
+     `ink-3` is 13px/600 body-adjacent type, so it has to clear AA (4.5:1) on
+     every surface it lands on — not just on paper. Most `.label` call sites sit
+     directly on the desk, so the desk is the binding constraint. Measured:
+     #8b8980 was 3.51:1 on sheet and 2.78:1 on desk; #6e6b62 was still only
+     4.22:1 on desk. #68655c is the value that clears the floor on both
+     (5.83:1 sheet, 4.62:1 desk, 5.29:1 on the sheet tint) and still sits a
+     visible step below `ink-2` (#5d5b54). */
   --color-ink: #1b1a17;
   --color-ink-soft: #3a3833;
   --color-ink-2: #5d5b54;
-  --color-ink-3: #8b8980;
+  --color-ink-3: #68655c;
 
   /* — Rules —
      Page content sits directly on the desk now, so every hairline is drawn
@@ -40,7 +67,14 @@
      legible on `--color-sheet` for the surfaces that keep a white fill.
      Measured on desk: rule 1.31:1, rule-2 1.62:1, edge 1.99:1.
      `edge` stays the structural one — masthead rule, footer rule, and the
-     dividers that separate whole sections. */
+     dividers that separate whole sections.
+
+     Dark was re-measured separately against `--color-desk` (#0c0d0b) and needed
+     no re-tuning, but `rule` is the weakest line in the system at 1.55:1 —
+     below the 3:1 a meaningful boundary wants. It is kept because it only ever
+     separates rows inside a ruled block that already has an edge, never on its
+     own; raising it would draw lines through every card. `rule-2` (2.21:1) and
+     `edge` (1.72:1) carry the boundaries that must be seen across a gap. */
   --color-rule: #cbc9be;
   --color-rule-2: #b7b5a9;
   --color-edge: #a5a397;
@@ -74,19 +108,15 @@
   --color-mute: #6e6c63;
   --color-mute-wash: #efeee9;
 
-  /* Compatibility aliases for existing utilities. */
-  --color-warn: #8a5a11;
-  --color-info: #2f5c8f;
-
-  /* — Semantic aliases used across components — */
+  /* — Semantic aliases used across components —
+     This block used to carry a shadcn-shaped set (`surface`, `input`,
+     `success`/`warning`/`danger`, `warn`/`info`) that nothing ever consumed.
+     A token nobody reads is worse than no token: it looks like a decision. The
+     names that survive are the ones with a live utility behind them. */
   --color-background: #e6e5e0;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f5f4ef;
-  --color-surface-elevated: #ffffff;
   --color-foreground: #1b1a17;
   --color-muted-foreground: #5d5b54;
   --color-border: #dfddd4;
-  --color-input: #c9c7bc;
   --color-primary: #1b1a17;
   --color-primary-foreground: #ffffff;
   --color-secondary: #f5f4ef;
@@ -94,27 +124,49 @@
   --color-muted: #f5f4ef;
   --color-accent: #fff3ad;
   --color-accent-foreground: #241f00;
-  --color-success: #2e6a46;
-  --color-warning: #8a5a11;
-  --color-danger: #a32b21;
   --color-focus-ring: #1b1a17;
 
-  /* — Type — */
+  /* — Type —
+     One display family, a strong jump, tighter tracking as size grows.
+     `text-display` exists so the hero stops inventing its own clamp; the
+     `h1..h4` rules in `@layer base` below are the other half of the same
+     scale. This one is hero-only — a second h1 size is a scale with a leak. */
   --font-sans: var(--font-archivo), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-azeret), ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, monospace;
-  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  --text-display: clamp(2.125rem, 1.2rem + 3.8vw, 3.5rem);
+
+  /* — Measure: four roles, not seventeen —
+     Every long line in the product is a reading measure. Naming them means a
+     new page picks one instead of hand-rolling a `max-w-[63ch]`.
+     Tailwind has no `--measure-*` namespace, so these do NOT generate
+     `max-w-*` utilities and are not emitted into the built CSS at all — they
+     are the source of truth the call sites are meant to be measured against,
+     and the values to adopt as `--container-*` if a page ever needs the
+     utility. */
+  --measure-prose: 66ch;
+  --measure-lede: 58ch;
+  --measure-narrow: 46ch;
+  --measure-display: 36ch;
+
+  /* — Vertical rhythm: three roles —
+     Same caveat as the measures: no `--space-*` namespace exists, so these are
+     a written record of which spacing-scale value means what. Sections,
+     tighter sections, and the rhythm of a prose page. Pick the `py-*` that
+     matches the token, do not invent a fifth. */
+  --space-section: 5.5rem;
+  --space-section-tight: 4rem;
+  --space-prose: 3.5rem;
 
   /* — Shape: paper corners, not pills — */
   --radius-sm: 2px;
   --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-xl: 6px;
-  --radius-2xl: 8px;
 
-  /* — Depth: a sheet on a desk lifts exactly once — */
+  /* — Depth: a sheet on a desk lifts exactly once —
+     `shadow-xs` is the one the primary Button uses for its press; `sheet` is
+     the sheet of paper; `lift` is hover. Nothing between those two exists
+     because nothing was ever that far off the desk. */
   --shadow-xs: 0 1px 1px rgb(27 26 23 / 0.04);
-  --shadow-sm: 0 1px 2px rgb(27 26 23 / 0.06);
-  --shadow-card: 0 1px 2px rgb(27 26 23 / 0.05);
   --shadow-sheet: 0 1px 2px rgb(27 26 23 / 0.06), 0 8px 24px -18px rgb(27 26 23 / 0.28);
   --shadow-lift: 0 1px 2px rgb(27 26 23 / 0.06), 0 14px 30px -16px rgb(27 26 23 / 0.3);
 
@@ -127,15 +179,16 @@
 
 .dark {
   --color-desk: #0c0d0b;
-  --color-desk-sunk: #080908;
   --color-sheet: #1e1f1c;
   --color-sheet-tint: #242521;
-  --color-board: #161714;
 
+  /* #7e7c72 measured 3.95:1 on the dark sheet — the same AA failure as light
+     mode. #8e8c83 clears it on every dark surface: 4.91:1 on sheet, 5.78:1 on
+     desk, 4.57:1 on the sheet tint. */
   --color-ink: #f3f1e9;
   --color-ink-soft: #e2e0d6;
   --color-ink-2: #a8a69b;
-  --color-ink-3: #7e7c72;
+  --color-ink-3: #8e8c83;
 
   --color-rule: #33342f;
   --color-rule-2: #4a4b44;
@@ -164,17 +217,10 @@
   --color-mute: #9e9c91;
   --color-mute-wash: #232420;
 
-  --color-warn: #e0a544;
-  --color-info: #85b2e2;
-
   --color-background: #0c0d0b;
-  --color-surface: #1e1f1c;
-  --color-surface-muted: #242521;
-  --color-surface-elevated: #242521;
   --color-foreground: #f3f1e9;
   --color-muted-foreground: #a8a69b;
   --color-border: #33342f;
-  --color-input: #4a4b44;
   --color-primary: #f3f1e9;
   --color-primary-foreground: #14150f;
   --color-secondary: #242521;
@@ -182,14 +228,9 @@
   --color-muted: #242521;
   --color-accent: #3a3512;
   --color-accent-foreground: #e6cf4a;
-  --color-success: #6ecb95;
-  --color-warning: #e0a544;
-  --color-danger: #e58a80;
   --color-focus-ring: #e6cf4a;
 
   --shadow-xs: 0 1px 1px rgb(0 0 0 / 0.3);
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
   --shadow-sheet: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -18px rgb(0 0 0 / 0.7);
   --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.45), 0 14px 30px -16px rgb(0 0 0 / 0.75);
 }
@@ -217,16 +258,6 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: 2px;
-  }
-
-  ::selection {
-    background-color: var(--color-mark);
-    color: var(--color-mark-ink);
   }
 
   /* Type scale, in the spirit of The Elements of Typographic Style:
@@ -274,90 +305,96 @@
 
 /* ==========================================================================
    Proof Sheet primitives
+   --------------------------------------------------------------------------
+   `@layer components` is not tidiness — it is the fix. These classes were
+   unlayered, and per CSS Cascade Level 5 an unlayered normal declaration
+   outranks *every* layered one, including Tailwind's `@layer utilities`. So a
+   `text-ink-3` written beside `className="label"` was silently discarded and
+   the label rendered in `.label`'s own default ink instead: 37 call sites, one
+   invisible bug each, and no warning from any tool.
+
+   Layering them puts the components between `@layer base` and
+   `@layer utilities`, which is where "a default that a utility may override"
+   belongs. The semantic colour defaults stay — they are the reason 42 call
+   sites can write bare `label`/`figure` and get the right ink — but they are
+   now defaults rather than overrides.
    ========================================================================== */
 
-/* The sheet: a page of paper lying on the desk. Its outline is an edge, not a
-   hairline — it has to be visible against the desk, not against paper. */
-.sheet {
-  background-color: var(--color-sheet);
-  border: 1px solid var(--color-edge);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sheet);
-}
+@layer components {
+  /* The sheet: a page of paper lying on the desk. Its outline is an edge, not a
+     hairline — it has to be visible against the desk, not against paper. */
+  .sheet {
+    background-color: var(--color-sheet);
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sheet);
+  }
 
-/* A ruled block. Cards are rows on a sheet, not objects floating above it. */
-.slab {
-  background-color: var(--color-sheet);
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-md);
-}
+  /* A ruled block. Cards are rows on a sheet, not objects floating above it. */
+  .slab {
+    background-color: var(--color-sheet);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-md);
+  }
 
-.slab-sunk {
-  background-color: var(--color-sheet-tint);
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-md);
-}
+  .slab-sunk {
+    background-color: var(--color-sheet-tint);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-md);
+  }
 
-/* Small sentence-case label. This replaces the old ALL-CAPS mono eyebrow:
-   same job (signposting, not decoration), none of the templated tells. */
-.label {
-  font-size: 0.8125rem;
-  line-height: 1.3;
-  font-weight: 600;
-  letter-spacing: -0.006em;
-  color: var(--color-ink-3);
-}
+  /* Small sentence-case label. This replaces the old ALL-CAPS mono eyebrow:
+     same job (signposting, not decoration), none of the templated tells. */
+  .label {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.006em;
+    color: var(--color-ink-3);
+  }
 
-/* A printed figure: something that was measured. */
-.figure {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  line-height: 1.35;
-  font-weight: 400;
-  letter-spacing: 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-ink-2);
-}
+  /* A printed figure: something that was measured. */
+  .figure {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    font-weight: 400;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-2);
+  }
 
-.figure-lg {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
+  .figure-lg {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
 
-/* A proofreader's margin note: set in the gutter, tied to the text by a rule. */
-.margin-note {
-  border-left: 1px solid var(--color-rule-2);
-  padding-left: 1rem;
-}
+  /* A proofreader's margin note: set in the gutter, tied to the text by a rule. */
+  .margin-note {
+    border-left: 1px solid var(--color-rule-2);
+    padding-left: 1rem;
+  }
 
-.mark-wash {
-  background-color: color-mix(in srgb, var(--color-mark) 55%, transparent);
-}
+  .mark-wash {
+    background-color: color-mix(in srgb, var(--color-mark) 55%, transparent);
+  }
 
-/* Underline as the link treatment — how a printed document signals a
-   reference. No blue, no chrome, visible on both paper and desk. */
-.link {
-  color: var(--color-ink);
-  text-decoration: underline;
-  text-decoration-color: var(--color-rule-2);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-  transition: text-decoration-color var(--duration-base) var(--ease-out);
-}
+  /* Underline as the link treatment — how a printed document signals a
+     reference. No blue, no chrome, visible on both paper and desk. */
+  .link {
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--color-rule-2);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--duration-base) var(--ease-out);
+  }
 
-.link:hover {
-  text-decoration-color: var(--color-ink);
-}
-
-/* Hairline rules */
-.rule-t {
-  border-top: 1px solid var(--color-rule);
-}
-
-.rule-b {
-  border-bottom: 1px solid var(--color-rule);
+  .link:hover {
+    text-decoration-color: var(--color-ink);
+  }
 }
 
 /* Display cut: the narrow width of Archivo, used only at heading sizes. */
@@ -416,10 +453,12 @@
   transform-origin: left center;
 }
 
-.rise-1 { animation-delay: 40ms; }
-.rise-2 { animation-delay: 90ms; }
-.rise-3 { animation-delay: 140ms; }
-.rise-4 { animation-delay: 190ms; }
+/* Only the one delay the hero actually uses. A ladder of four steps implies an
+   orchestrated sequence that no page performs; `rise-2` is the stagger the hero
+   block needed, so it is the only step that survived the sweep. */
+.rise-2 {
+  animation-delay: 90ms;
+}
 
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -465,10 +504,24 @@ details[open] .accordion-content {
    ========================================================================== */
 
 @media print {
+  /* A4/Letter with the browser's default ~1in margins leaves too little width
+     for the report's two-column score rows, so the page margin is stated
+     explicitly in millimetres. `no-print` already removes the masthead and
+     footer; this is the other half of getting a full-width sheet of paper. */
+  @page {
+    margin: 14mm;
+  }
+
   html,
   body {
     background: #ffffff;
     color: #111111;
+  }
+
+  /* The app shell reserves `pb-16` for on-screen breathing room. Printed, it is
+     64px of blank paper repeated at the foot of every page. */
+  main {
+    padding-bottom: 0 !important;
   }
 
   .no-print {
@@ -497,7 +550,12 @@ details[open] .accordion-content {
     display: none;
   }
 
+  /* The underline IS the link treatment — there is no colour and no chrome to
+     survive on paper, so stripping it left a printed report where every link
+     was indistinguishable from body text. Keep the affordance, restyle it for
+     ink on white. */
   a {
-    text-decoration: none;
+    text-decoration-color: var(--color-rule-2) !important;
+    text-decoration-thickness: 1px !important;
   }
 }

@@ -1,0 +1,38 @@
+# Weekly, not daily. This repo has one maintainer and a small dependency tree;
+# a daily schedule would train the notifications to be ignored, which is worse
+# than a slightly slower answer on a Monday.
+version: 2
+updates:
+  # pdfjs-dist parses untrusted binary input and every direct dependency is on a
+  # caret range, so the npm ecosystem is the highest-risk surface here.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    open-pull-requests-limit: 5
+    groups:
+      # Patch and minor bumps for dev tooling land together and are only ever
+      # accepted as one review; a per-package queue would be noise.
+      dev-tooling:
+        applies-to: version-updates
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+
+  # The workflows are pinned to commit SHAs, which is what makes them
+    # immutable - and what also means Dependabot cannot see a `@v4` to bump.
+  # This entry is how the pins move.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    labels:
+      - dependencies
+      - ci

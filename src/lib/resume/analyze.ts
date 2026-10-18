@@ -6,8 +6,6 @@ import { normalizeText } from "./text-normalizer";
 import { analyzeBullets } from "./bullet-analyzer";
 import { detectContact } from "./contact-detector";
 import type { ParsedResume, SourceDocument } from "./types";
-import { scoreResume } from "./score-engine";
-import type { ScoreReport } from "./types";
 
 /**
  * Build the normalized resume model from a raw extracted document.
@@ -18,24 +16,25 @@ export function buildParsedResume(source: SourceDocument): ParsedResume {
 
   const sections = detectSections(lines, lineOffsets);
   const contact = detectContact(normalizedText);
-  const { bullets, duplicateTexts } = analyzeBullets(normalizedText, lines, lineOffsets, sections);
+  const { bullets, duplicates } = analyzeBullets(normalizedText, lines, lineOffsets, sections);
   const dates = analyzeDates(normalizedText);
   const skills = detectSkills(normalizedText);
   const formattingSignals = analyzeFormatting({
-    normalizedText,
     stats,
     structure: source.structure,
-    pageCount: source.pageCount,
     sections,
-    dates,
     bullets,
   });
 
+  // The warning is written from the findings, never the other way round. It used
+  // to be built from a count and then scraped back out of its own sentence by
+  // the duplicate rule, so rewording the message silently changed the score.
   const parsingWarnings = [...(source.warnings ?? [])];
-  if (duplicateTexts.length > 0) {
+  if (duplicates.length > 0) {
+    const extraCopies = duplicates.reduce((total, finding) => total + finding.extraCopies, 0);
     parsingWarnings.push({
       code: "duplicate-bullets",
-      message: `${duplicateTexts.length} repeated bullet ${duplicateTexts.length === 1 ? "item was" : "items were"} found.`,
+      message: `${duplicates.length} repeated bullet ${duplicates.length === 1 ? "item was" : "items were"} found, ${extraCopies} ${extraCopies === 1 ? "copy" : "copies"} in total.`,
     });
   }
 
@@ -45,26 +44,17 @@ export function buildParsedResume(source: SourceDocument): ParsedResume {
     pageCount: source.pageCount,
     rawText: source.text,
     normalizedText,
+    documentStructure: source.structure,
     sections,
     contact,
     bullets,
     dates: dates.dates,
+    dateRanges: dates.ranges,
     skills: skills.skills,
     genericTermMentions: skills.genericMentions,
+    duplicateBullets: duplicates,
     formattingSignals,
     parsingWarnings,
     stats,
   };
-}
-
-export interface AnalysisResult {
-  resume: ParsedResume;
-  report: ScoreReport;
-}
-
-/** Full deterministic pipeline: document -> normalized model -> score report. */
-export function analyzeSourceDocument(source: SourceDocument): AnalysisResult {
-  const resume = buildParsedResume(source);
-  const report = scoreResume(resume);
-  return { resume, report };
 }

@@ -1,6 +1,10 @@
 import type { ScoreCategory } from "@/lib/resume/types";
 import { Button } from "@/components/ui/button";
-import { categoryLostPercent, categoryTone } from "@/components/ui/tones";
+import {
+  CATEGORY_TONE_THRESHOLDS,
+  categoryLostPercent,
+  categoryTone,
+} from "@/components/ui/tones";
 import { CategoryScoreBar } from "./category-score-bar";
 
 function CategoryRow({
@@ -11,8 +15,18 @@ function CategoryRow({
   onInspect: (categoryId: string) => void;
 }) {
   const tone = categoryTone(category);
-  const setAside = category.checksTotal - category.checksEvaluated;
   const lostPercent = categoryLostPercent(category);
+  const excluded: string[] = [];
+  // Two numbers, because `checksTotal - checksEvaluated` was one number for two
+  // different facts: a check that had nothing to look at, and a check the
+  // extraction would not support. Reading the second as the first tells a resume
+  // with no summary section that its text failed to extract.
+  if (category.notApplicable > 0) {
+    excluded.push(`${category.notApplicable} did not apply`);
+  }
+  if (category.unableToVerify > 0) {
+    excluded.push(`${category.unableToVerify} could not be evaluated`);
+  }
 
   return (
     <li className="grid gap-3 px-5 py-5 sm:grid-cols-[1fr_auto] sm:items-start sm:gap-6 sm:px-7">
@@ -26,7 +40,7 @@ function CategoryRow({
         />
         <p className="figure text-ink-3">
           {category.checksEvaluated} of {category.checksTotal} checks examined
-          {setAside > 0 ? `, ${setAside} set aside` : ""}
+          {excluded.length > 0 ? `, ${excluded.join(", ")}` : ""}
           {lostPercent > 0 ? `, ${lostPercent}% of points lost` : ""}
         </p>
       </div>
@@ -65,10 +79,15 @@ export function ScoreBreakdown({
         ))}
       </ul>
 
-      <p className="text-[13px] leading-relaxed text-ink-3">
-        Bar colour follows how much of that category was lost: green under a quarter, amber up to
-        three fifths, red beyond. Checks set aside are removed from both totals, so they are never
-        counted as failures.
+      <p className="max-w-[62ch] text-[13px] leading-relaxed text-ink-3">
+        {/* The percentages are rendered from the same constants `categoryTone`
+            branches on. A sentence that spells "a quarter" and "three fifths"
+            keeps saying them after the rule moves. */}
+        Bar colour follows how much of that category was lost: green under{" "}
+        {Math.round(CATEGORY_TONE_THRESHOLDS.caution * 100)}%, amber up to{" "}
+        {Math.round(CATEGORY_TONE_THRESHOLDS.issue * 100)}%, red beyond. Checks that did not apply
+        and checks that could not be evaluated are both removed from the totals, so neither is ever
+        counted as a failure.
       </p>
     </div>
   );
